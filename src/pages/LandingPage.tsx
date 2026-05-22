@@ -162,6 +162,120 @@ export function LandingPage() {
             />
           </div>
         </section>
+
+        {/* Solutions Section */}
+        <section id="solutions" className="container mx-auto px-6 max-w-7xl mt-40">
+          <div className="flex flex-col md:flex-row items-center gap-16">
+            <div className="flex-1 space-y-6">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Built for every kind of team</h2>
+              <p className="text-muted-foreground text-lg leading-relaxed">
+                Whether you're an agile engineering team shipping daily, or a creative agency managing client projects, Planora adapts to your unique workflow.
+              </p>
+              <ul className="space-y-4 pt-4">
+                {[
+                  'Engineering: Agile sprints, bug tracking, and Git integration.',
+                  'Marketing: Campaign management, content calendars, and assets.',
+                  'Design: Design reviews, mood boards, and feedback loops.',
+                  'Product: Roadmaps, feature requests, and release planning.'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-primary shrink-0" />
+                    <span className="text-foreground font-medium">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="pt-6">
+                <Link to="/solutions">
+                  <Button variant="outline" className="rounded-full">View all solutions</Button>
+                </Link>
+              </div>
+            </div>
+            <div className="flex-1 w-full">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/20 to-primary/20 rounded-3xl blur-2xl"></div>
+                <div className="relative bg-card border border-border/50 rounded-3xl p-8 shadow-xl">
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-20 rounded-xl bg-muted/50 border border-border/50 flex items-center px-4 gap-4 animate-pulse" style={{ animationDelay: `${i * 200}ms` }}>
+                        <div className="h-10 w-10 rounded-lg bg-primary/20"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-muted rounded w-1/3"></div>
+                          <div className="h-3 bg-muted rounded w-1/4"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section id="pricing" className="container mx-auto px-6 max-w-7xl mt-40">
+          <div className="text-center mb-16 space-y-4">
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Simple, transparent pricing</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Start for free, upgrade when you need more power. No hidden fees.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Basic */}
+            <div className="p-8 rounded-3xl bg-card border border-border/50 shadow-sm flex flex-col hover:shadow-xl transition-shadow">
+              <h3 className="text-2xl font-bold mb-2">Starter</h3>
+              <p className="text-muted-foreground mb-6">Perfect for individuals and small projects.</p>
+              <div className="mb-6">
+                <span className="text-4xl font-extrabold">$0</span>
+                <span className="text-muted-foreground">/month</span>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Up to 3 projects', 'Basic kanban boards', 'Community support'].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button variant="outline" className="w-full rounded-full">Get Started</Button>
+            </div>
+
+            {/* Pro */}
+            <div className="p-8 rounded-3xl bg-primary text-primary-foreground shadow-xl shadow-primary/20 flex flex-col relative transform md:-translate-y-4 hover:shadow-2xl hover:shadow-primary/30 transition-all">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                Most Popular
+              </div>
+              <h3 className="text-2xl font-bold mb-2 text-white">Pro</h3>
+              <p className="text-primary-foreground/80 mb-6">For growing teams that need more power.</p>
+              <div className="mb-6">
+                <span className="text-4xl font-extrabold text-white">$12</span>
+                <span className="text-primary-foreground/80">/user/month</span>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1 text-primary-foreground/90">
+                {['Unlimited projects', 'Advanced automations', 'Priority support', 'Custom fields'].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-yellow-400" /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button className="w-full rounded-full bg-background text-foreground hover:bg-muted">Start Free Trial</Button>
+            </div>
+
+            {/* Enterprise */}
+            <div className="p-8 rounded-3xl bg-card border border-border/50 shadow-sm flex flex-col hover:shadow-xl transition-shadow">
+              <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
+              <p className="text-muted-foreground mb-6">Advanced security and support for large orgs.</p>
+              <div className="mb-6">
+                <span className="text-4xl font-extrabold">Custom</span>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['SSO / SAML', 'Dedicated success manager', 'SLA guarantee', 'Advanced reporting'].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" /> {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button variant="outline" className="w-full rounded-full">Contact Sales</Button>
+            </div>
+          </div>
+        </section>
         
         {/* CTA Section */}
         <section className="container mx-auto px-6 max-w-5xl mt-40 mb-20">
