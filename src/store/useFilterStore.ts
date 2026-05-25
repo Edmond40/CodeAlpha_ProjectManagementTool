@@ -6,9 +6,10 @@ export type ProjectLayout = 'list' | 'board' | 'timeline';
 export type BoardGroupBy = 'status' | 'priority' | 'assignee' | 'none';
 export type BoardOrderBy = 'manual' | 'priority' | 'title' | 'created' | 'activity';
 export type CompletedFilter = 'all' | 'none' | 'last-week';
-export type IssueViewTab = 'all' | 'active' | 'backlog' | 'dashboard-done';
-export type MyIssuesTab = 'assigned' | 'created' | 'subscribed' | 'activity';
-export type ViewsContentTab = 'issues' | 'projects';
+export type TaskViewTab = 'all' | 'active' | 'backlog' | 'dashboard-done';
+export type MyTasksTab = 'assigned' | 'created' | 'subscribed' | 'activity';
+export type ViewsContentTab = 'tasks' | 'projects';
+export type ProjectListTab = 'all' | 'active';
 
 export interface BoardFilters {
   priorities: string[];
@@ -24,10 +25,10 @@ export interface ViewOptions {
   groupBy: BoardGroupBy;
   orderBy: BoardOrderBy;
   sortDesc: boolean;
-  showSubIssues: boolean;
+  showSubTasks: boolean;
   showEmptyColumns: boolean;
   orderCompletedByRecency: boolean;
-  completedIssues: CompletedFilter;
+  completedTasks: CompletedFilter;
   displayProperties: string[];
 }
 
@@ -50,10 +51,13 @@ interface FilterState {
   projectFilters: ProjectFilters;
   viewOptions: ViewOptions;
   projectViewOptions: ProjectViewOptions;
-  issueViewTab: IssueViewTab;
-  myIssuesTab: MyIssuesTab;
+  taskViewTab: TaskViewTab;
+  myTasksTab: MyTasksTab;
   viewsContentTab: ViewsContentTab;
+  projectListTab: ProjectListTab;
   hiddenColumnIds: string[];
+  viewsSortKey: 'name' | 'created' | 'updated';
+  viewsSortDesc: boolean;
   setBoardFilters: (filters: Partial<BoardFilters>) => void;
   resetBoardFilters: () => void;
   setProjectFilters: (filters: Partial<ProjectFilters>) => void;
@@ -62,11 +66,14 @@ interface FilterState {
   setProjectViewOptions: (options: Partial<ProjectViewOptions>) => void;
   toggleDisplayProperty: (prop: string) => void;
   toggleProjectDisplayProperty: (prop: string) => void;
-  setIssueViewTab: (tab: IssueViewTab) => void;
-  setMyIssuesTab: (tab: MyIssuesTab) => void;
+  setTaskViewTab: (tab: TaskViewTab) => void;
+  setMyTasksTab: (tab: MyTasksTab) => void;
   setViewsContentTab: (tab: ViewsContentTab) => void;
+  setProjectListTab: (tab: ProjectListTab) => void;
+  setViewsSort: (key: 'name' | 'created' | 'updated', desc: boolean) => void;
   toggleHiddenColumn: (columnId: string) => void;
   resetViewOptions: () => void;
+  saveViewDefaults: () => void;
 }
 
 const defaultBoardFilters: BoardFilters = {
@@ -88,10 +95,10 @@ const defaultViewOptions: ViewOptions = {
   groupBy: 'status',
   orderBy: 'manual',
   sortDesc: false,
-  showSubIssues: true,
+  showSubTasks: true,
   showEmptyColumns: false,
   orderCompletedByRecency: false,
-  completedIssues: 'all',
+  completedTasks: 'all',
   displayProperties: ['id', 'status', 'assignee', 'priority', 'project', 'due date', 'labels'],
 };
 
@@ -101,20 +108,48 @@ const defaultProjectViewOptions: ProjectViewOptions = {
   orderBy: 'manual',
   showClosedProjects: 'all',
   showEmptyColumns: true,
-  displayProperties: ['status', 'priority', 'lead', 'target date', 'issues', 'health'],
+  displayProperties: ['status', 'priority', 'lead', 'target date', 'tasks', 'health'],
 };
+
+function migratePersisted(state: FilterState): FilterState {
+  const s = state as FilterState & {
+    issueViewTab?: TaskViewTab;
+    myIssuesTab?: MyTasksTab;
+    viewsContentTab?: string;
+    viewOptions?: ViewOptions & { showSubIssues?: boolean; completedIssues?: CompletedFilter };
+    projectViewOptions?: ProjectViewOptions & { displayProperties?: string[] };
+  };
+  if (s.issueViewTab) s.taskViewTab = s.issueViewTab;
+  if (s.myIssuesTab) s.myTasksTab = s.myIssuesTab;
+  if ((s.viewsContentTab as string) === 'issues') s.viewsContentTab = 'tasks';
+  if (s.viewOptions?.showSubIssues !== undefined) {
+    s.viewOptions.showSubTasks = s.viewOptions.showSubIssues;
+  }
+  if (s.viewOptions?.completedIssues) {
+    s.viewOptions.completedTasks = s.viewOptions.completedIssues;
+  }
+  if (s.projectViewOptions?.displayProperties) {
+    s.projectViewOptions.displayProperties = s.projectViewOptions.displayProperties.map((p) =>
+      p === 'issues' ? 'tasks' : p
+    );
+  }
+  return s;
+}
 
 export const useFilterStore = create<FilterState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       boardFilters: defaultBoardFilters,
       projectFilters: defaultProjectFilters,
       viewOptions: defaultViewOptions,
       projectViewOptions: defaultProjectViewOptions,
-      issueViewTab: 'all',
-      myIssuesTab: 'assigned',
-      viewsContentTab: 'issues',
+      taskViewTab: 'all',
+      myTasksTab: 'assigned',
+      viewsContentTab: 'tasks',
+      projectListTab: 'all',
       hiddenColumnIds: ['backlog', 'review-hidden', 'done-hidden', 'canceled', 'duplicate'],
+      viewsSortKey: 'name',
+      viewsSortDesc: true,
       setBoardFilters: (filters) =>
         set((s) => ({ boardFilters: { ...s.boardFilters, ...filters } })),
       resetBoardFilters: () => set({ boardFilters: defaultBoardFilters }),
@@ -141,9 +176,11 @@ export const useFilterStore = create<FilterState>()(
             : [...props, prop];
           return { projectViewOptions: { ...s.projectViewOptions, displayProperties: next } };
         }),
-      setIssueViewTab: (tab) => set({ issueViewTab: tab }),
-      setMyIssuesTab: (tab) => set({ myIssuesTab: tab }),
+      setTaskViewTab: (tab) => set({ taskViewTab: tab }),
+      setMyTasksTab: (tab) => set({ myTasksTab: tab }),
       setViewsContentTab: (tab) => set({ viewsContentTab: tab }),
+      setProjectListTab: (tab) => set({ projectListTab: tab }),
+      setViewsSort: (key, desc) => set({ viewsSortKey: key, viewsSortDesc: desc }),
       toggleHiddenColumn: (columnId) =>
         set((s) => ({
           hiddenColumnIds: s.hiddenColumnIds.includes(columnId)
@@ -152,15 +189,31 @@ export const useFilterStore = create<FilterState>()(
         })),
       resetViewOptions: () =>
         set({ viewOptions: defaultViewOptions, projectViewOptions: defaultProjectViewOptions }),
+      saveViewDefaults: () => {
+        const state = get();
+        set({
+          viewOptions: { ...state.viewOptions },
+          projectViewOptions: { ...state.projectViewOptions },
+        });
+      },
     }),
     {
       name: 'planora-filters',
       partialize: (s) => ({
+        boardFilters: s.boardFilters,
+        projectFilters: s.projectFilters,
         viewOptions: s.viewOptions,
         projectViewOptions: s.projectViewOptions,
         hiddenColumnIds: s.hiddenColumnIds,
-        issueViewTab: s.issueViewTab,
+        taskViewTab: s.taskViewTab,
+        myTasksTab: s.myTasksTab,
+        viewsContentTab: s.viewsContentTab,
+        projectListTab: s.projectListTab,
+        viewsSortKey: s.viewsSortKey,
+        viewsSortDesc: s.viewsSortDesc,
       }),
+      merge: (persisted, current) =>
+        migratePersisted({ ...current, ...(persisted as object) } as FilterState),
     }
   )
 );

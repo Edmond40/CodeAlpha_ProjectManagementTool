@@ -91,8 +91,8 @@ export function CreateTaskModal() {
         >
           <div className="flex justify-between items-center mb-5">
             <div>
-              <p className="text-xs text-muted-foreground font-medium">DEV › New issue</p>
-              <h2 className="text-xl font-bold text-foreground mt-0.5">Create issue</h2>
+              <p className="text-xs text-muted-foreground font-medium">DEV › New task</p>
+              <h2 className="text-xl font-bold text-foreground mt-0.5">Create task</h2>
             </div>
             <button
               onClick={closeCreateTaskModal}
@@ -107,7 +107,7 @@ export function CreateTaskModal() {
               <Input
                 {...register('title')}
                 error={!!errors.title}
-                placeholder="Issue title"
+                placeholder="Task title"
                 className="text-lg font-semibold border-0 px-0 focus-visible:ring-0 bg-transparent"
               />
               {errors.title && (
@@ -162,7 +162,7 @@ export function CreateTaskModal() {
               <Button type="button" variant="outline" onClick={closeCreateTaskModal}>
                 Cancel
               </Button>
-              <Button type="submit">Create issue</Button>
+              <Button type="submit">Create task</Button>
             </div>
           </form>
         </motion.div>

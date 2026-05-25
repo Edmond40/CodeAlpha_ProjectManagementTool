@@ -5,6 +5,7 @@ import { Select } from './Select';
 import { Toggle } from './Toggle';
 import { SegmentedControl } from './SegmentedControl';
 import { useFilterStore } from '../../store/useFilterStore';
+import { useUIStore } from '../../store/useUIStore';
 import { cn } from '../../utils/cn';
 
 const DISPLAY_PROPERTIES = [
@@ -13,7 +14,14 @@ const DISPLAY_PROPERTIES = [
 ];
 
 export function ViewOptionsPopover() {
-  const { viewOptions, setViewOptions, toggleDisplayProperty, resetViewOptions } = useFilterStore();
+  const { viewOptions, setViewOptions, toggleDisplayProperty, resetViewOptions, saveViewDefaults } =
+    useFilterStore();
+  const { addToast } = useUIStore();
+
+  const handleSave = () => {
+    saveViewDefaults();
+    addToast({ title: 'Display options saved', type: 'success' });
+  };
 
   return (
     <Popover
@@ -83,7 +91,7 @@ export function ViewOptionsPopover() {
           <button
             type="button"
             onClick={() => setViewOptions({ sortDesc: !viewOptions.sortDesc })}
-            className="h-9 w-9 shrink-0 rounded-lg border border-border bg-muted/50 flex items-center justify-center hover:bg-muted"
+            className="h-9 w-9 shrink-0 rounded-lg border border-border bg-muted/50 flex items-center justify-center hover:bg-muted mb-0.5"
             title="Toggle sort direction"
           >
             <ArrowUpDown className={cn('w-3.5 h-3.5', viewOptions.sortDesc && 'text-primary')} />
@@ -91,9 +99,9 @@ export function ViewOptionsPopover() {
         </div>
 
         <Select
-          label="Completed issues"
-          value={viewOptions.completedIssues}
-          onChange={(v) => setViewOptions({ completedIssues: v as typeof viewOptions.completedIssues })}
+          label="Completed tasks"
+          value={viewOptions.completedTasks}
+          onChange={(v) => setViewOptions({ completedTasks: v as typeof viewOptions.completedTasks })}
           options={[
             { value: 'all', label: 'All' },
             { value: 'none', label: 'None' },
@@ -110,9 +118,9 @@ export function ViewOptionsPopover() {
             size="sm"
           />
           <Toggle
-            label="Show sub-issues"
-            checked={viewOptions.showSubIssues}
-            onChange={(v) => setViewOptions({ showSubIssues: v })}
+            label="Show sub-tasks"
+            checked={viewOptions.showSubTasks}
+            onChange={(v) => setViewOptions({ showSubTasks: v })}
             size="sm"
           />
           <Toggle
@@ -146,6 +154,18 @@ export function ViewOptionsPopover() {
             })}
           </div>
         </div>
+      </div>
+      <div className="p-3 border-t border-border flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => addToast({ title: 'Default set for workspace', type: 'default' })}
+          className="text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          Set default for everyone…
+        </button>
+        <Button size="sm" onClick={handleSave}>
+          Save
+        </Button>
       </div>
     </Popover>
   );

@@ -1,5 +1,5 @@
 import type { Task } from '../store/useBoardStore';
-import type { BoardFilters, ViewOptions, IssueViewTab } from '../store/useFilterStore';
+import type { BoardFilters, ViewOptions, TaskViewTab } from '../store/useFilterStore';
 
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
 
@@ -7,15 +7,15 @@ export function filterAndSortTasks(
   tasks: Task[],
   filters: BoardFilters,
   viewOptions: ViewOptions,
-  issueTab?: IssueViewTab
+  taskTab?: TaskViewTab
 ): Task[] {
   let result = [...tasks];
 
-  if (issueTab === 'active') {
+  if (taskTab === 'active') {
     result = result.filter((t) => t.columnId === 'in-progress' || t.columnId === 'review');
-  } else if (issueTab === 'backlog') {
+  } else if (taskTab === 'backlog') {
     result = result.filter((t) => t.columnId === 'todo');
-  } else if (issueTab === 'dashboard-done') {
+  } else if (taskTab === 'dashboard-done') {
     result = result.filter((t) => t.columnId === 'done');
   }
 
@@ -45,7 +45,7 @@ export function filterAndSortTasks(
     );
   }
 
-  if (viewOptions.completedIssues === 'none') {
+  if (viewOptions.completedTasks === 'none') {
     result = result.filter((t) => t.columnId !== 'done');
   }
 

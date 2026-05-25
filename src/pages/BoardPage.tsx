@@ -21,8 +21,8 @@ import { HiddenColumnsPanel } from '../components/ui/HiddenColumnsPanel';
 import { TabFilters } from '../components/ui/TabFilters';
 import { filterAndSortTasks } from '../utils/filterTasks';
 
-const ISSUE_TABS = [
-  { value: 'all' as const, label: 'All issues' },
+const TASK_TABS = [
+  { value: 'all' as const, label: 'All tasks' },
   { value: 'active' as const, label: 'Active' },
   { value: 'backlog' as const, label: 'Backlog' },
   { value: 'dashboard-done' as const, label: 'dashboard done' },
@@ -31,19 +31,13 @@ const ISSUE_TABS = [
 export function BoardPage() {
   const { columns, tasks, moveTask, reorderColumn, setTasks } = useBoardStore();
   const { openCreateTaskModal, openCreateColumnModal, openTaskModal } = useUIStore();
-  const {
-    boardFilters,
-    viewOptions,
-    issueViewTab,
-    setIssueViewTab,
-    hiddenColumnIds,
-  } = useFilterStore();
+  const { boardFilters, viewOptions, taskViewTab, setTaskViewTab, hiddenColumnIds } = useFilterStore();
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const filteredTasks = useMemo(
-    () => filterAndSortTasks(tasks, boardFilters, viewOptions, issueViewTab),
-    [tasks, boardFilters, viewOptions, issueViewTab]
+    () => filterAndSortTasks(tasks, boardFilters, viewOptions, taskViewTab),
+    [tasks, boardFilters, viewOptions, taskViewTab]
   );
 
   const visibleColumns = useMemo(() => {
@@ -120,7 +114,7 @@ export function BoardPage() {
       <div className="flex flex-col gap-3 mb-4 shrink-0">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Issues</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Tasks</h1>
             <button type="button" className="text-muted-foreground hover:text-amber-400 transition-colors">
               <Star className="w-4 h-4" />
             </button>
@@ -129,24 +123,24 @@ export function BoardPage() {
             <AdvancedFilterMenu assigneeOptions={assigneeOptions} labelOptions={labelOptions} />
             <ViewOptionsPopover />
             <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => openCreateTaskModal()}>
-              <Plus className="w-3.5 h-3.5" /> New issue
+              <Plus className="w-3.5 h-3.5" /> New task
             </Button>
           </div>
         </div>
-        <TabFilters value={issueViewTab} onChange={setIssueViewTab} tabs={ISSUE_TABS} />
+        <TabFilters value={taskViewTab} onChange={setTaskViewTab} tabs={TASK_TABS} />
       </div>
 
       {viewOptions.layout === 'list' ? (
         <div className="flex-1 overflow-y-auto bg-card border border-border rounded-xl">
           {filteredTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-16">No issues match your filters.</p>
+            <p className="text-sm text-muted-foreground text-center py-16">No tasks match your filters.</p>
           ) : (
             filteredTasks.map((task) => (
               <button
                 key={task.id}
                 type="button"
                 onClick={() => openTaskModal(task.id)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 border-b border-border text-left transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 border-b border-border last:border-0 text-left transition-colors"
               >
                 <span className="text-xs font-mono text-muted-foreground w-14">{task.id.toUpperCase()}</span>
                 <span className="text-sm text-foreground flex-1">{task.title}</span>

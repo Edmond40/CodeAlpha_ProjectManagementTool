@@ -5,17 +5,24 @@ import { Select } from './Select';
 import { Toggle } from './Toggle';
 import { SegmentedControl } from './SegmentedControl';
 import { useFilterStore } from '../../store/useFilterStore';
+import { useUIStore } from '../../store/useUIStore';
 import { cn } from '../../utils/cn';
 
 const PROJECT_DISPLAY = [
   'milestones', 'summary', 'priority', 'status', 'health', 'lead',
-  'target date', 'issues', 'teams', 'members', 'dependencies',
+  'target date', 'tasks', 'teams', 'members', 'dependencies',
   'start date', 'created', 'updated', 'completed', 'labels',
 ];
 
 export function ProjectViewOptionsPopover() {
-  const { projectViewOptions, setProjectViewOptions, toggleProjectDisplayProperty, resetViewOptions } =
+  const { projectViewOptions, setProjectViewOptions, toggleProjectDisplayProperty, resetViewOptions, saveViewDefaults } =
     useFilterStore();
+  const { addToast } = useUIStore();
+
+  const handleSave = () => {
+    saveViewDefaults();
+    addToast({ title: 'Display options saved', type: 'success' });
+  };
 
   return (
     <Popover
@@ -118,9 +125,18 @@ export function ProjectViewOptionsPopover() {
             })}
           </div>
         </div>
-        <p className="text-[10px] text-muted-foreground pt-2 border-t border-border">
+      </div>
+      <div className="p-3 border-t border-border flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => addToast({ title: 'Default set for workspace', type: 'default' })}
+          className="text-[11px] text-muted-foreground hover:text-foreground"
+        >
           Set default for everyone…
-        </p>
+        </button>
+        <Button size="sm" onClick={handleSave}>
+          Save
+        </Button>
       </div>
     </Popover>
   );

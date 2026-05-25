@@ -1,121 +1,168 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { LayoutGrid, Table, BarChart3, GanttChartSquare, Plus } from 'lucide-react';
+import { Layers, Plus, ChevronDown, Star, MoreHorizontal, Trash2, ExternalLink } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { ProjectViewOptionsPopover } from '../components/ui/ProjectViewOptionsPopover';
 import { ViewOptionsPopover } from '../components/ui/ViewOptionsPopover';
-import { FilterPanel } from '../components/ui/FilterPanel';
-import { NewViewModal } from '../components/modals/NewViewModal';
+import { TabFilters } from '../components/ui/TabFilters';
+import { Dropdown } from '../components/ui/Dropdown';
+import { useFilterStore } from '../store/useFilterStore';
+import { useViewsStore } from '../store/useViewsStore';
+import { useUIStore } from '../store/useUIStore';
 import { useNavigate } from 'react-router-dom';
 
-type ViewType = 'board' | 'table' | 'timeline' | 'chart';
-
-const views: { id: ViewType; label: string; icon: typeof LayoutGrid }[] = [
-  { id: 'board', label: 'Board', icon: LayoutGrid },
-  { id: 'table', label: 'Table', icon: Table },
-  { id: 'timeline', label: 'Timeline', icon: GanttChartSquare },
-  { id: 'chart', label: 'Chart', icon: BarChart3 },
-];
-
-const mockSavedViews = [
-  { name: 'Active Sprint', type: 'board' as ViewType, project: 'All', tasks: 24, href: '/dashboard/boards' },
-  { name: 'Project Tracker', type: 'table' as ViewType, project: 'Dashboard Redesign', tasks: 16, href: '/dashboard/projects' },
-  { name: 'Release Timeline', type: 'timeline' as ViewType, project: 'All', tasks: 42, href: '/dashboard/roadmaps' },
-  { name: 'Burndown', type: 'chart' as ViewType, project: 'Sprint 47', tasks: 20, href: '/dashboard/analytics' },
-];
-
 export function ViewsPage() {
-  const [activeView, setActiveView] = useState<ViewType>('board');
-  const [newViewOpen, setNewViewOpen] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const {
+    viewsContentTab,
+    setViewsContentTab,
+    viewsSortKey,
+    viewsSortDesc,
+    setViewsSort,
+  } = useFilterStore();
+  const { views, removeView } = useViewsStore();
+  const { addToast } = useUIStore();
   const navigate = useNavigate();
 
-  const filtered = typeFilter.length
-    ? mockSavedViews.filter((v) => typeFilter.includes(v.type))
-    : mockSavedViews;
+  const filtered = views.filter((v) => v.type === viewsContentTab);
+
+  const sorted = [...filtered].sort((a, b) => {
+    const cmp = a[viewsSortKey].localeCompare(b[viewsSortKey]);
+    return viewsSortDesc ? -cmp : cmp;
+  });
+
+  const handleSortName = () => {
+    if (viewsSortKey === 'name') setViewsSort('name', !viewsSortDesc);
+    else setViewsSort('name', true);
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Views</h1>
-          <p className="text-sm text-muted-foreground mt-1">Saved views and perspectives</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="w-5 h-5 rounded bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[10px] font-bold">D</span>
+          <span>Devplug</span>
+          <span>/</span>
+          <span className="text-foreground font-medium">Views</span>
+          <button type="button" className="text-muted-foreground hover:text-amber-400 ml-1">
+            <Star className="w-3.5 h-3.5" />
+          </button>
         </div>
         <div className="flex items-center gap-2">
-          <FilterPanel
-            activeCount={typeFilter.length}
-            onReset={() => setTypeFilter([])}
-            fields={[
-              {
-                id: 'type',
-                label: 'View type',
-                type: 'multi-select',
-                options: views.map((v) => ({ value: v.id, label: v.label })),
-                value: typeFilter,
-                onChange: (v) => setTypeFilter(v as string[]),
-              },
-            ]}
-          />
-          <ViewOptionsPopover />
+          {viewsContentTab === 'tasks' ? <ViewOptionsPopover /> : <ProjectViewOptionsPopover />}
           <button
-            onClick={() => setNewViewOpen(true)}
-            className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shadow-sm flex items-center gap-1.5"
+            type="button"
+            onClick={() => navigate('/dashboard/views/new')}
+            className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted"
+            title="New view"
           >
-            <Plus className="w-3.5 h-3.5" />
-            New view
+            <Plus className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {views.map((v) => (
-          <button
-            key={v.id}
-            onClick={() => setActiveView(v.id)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all',
-              activeView === v.id
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-card border border-border text-muted-foreground hover:text-foreground'
+      <TabFilters
+        value={viewsContentTab}
+        onChange={setViewsContentTab}
+        tabs={[
+          { value: 'tasks', label: 'Tasks' },
+          { value: 'projects', label: 'Projects' },
+        ]}
+      />
+
+      <div className="flex-1 bg-card border border-border rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th className="px-4 py-3 font-medium text-muted-foreground">
+                <button type="button" className="flex items-center gap-1 hover:text-foreground" onClick={handleSortName}>
+                  Name <ChevronDown className={cn('w-3.5 h-3.5', viewsSortKey === 'name' && viewsSortDesc && 'rotate-180')} />
+                </button>
+              </th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Created</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Updated</th>
+              <th className="px-4 py-3 font-medium text-muted-foreground">Owner</th>
+              <th className="px-4 py-3 w-10" />
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                  No {viewsContentTab} views yet. Create one with +.
+                </td>
+              </tr>
+            ) : (
+              sorted.map((view) => (
+                <tr
+                  key={view.id}
+                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group"
+                >
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate(view.href)}
+                      className="flex items-center gap-2 font-medium text-foreground hover:text-primary"
+                    >
+                      <Layers className="w-4 h-4 text-muted-foreground" />
+                      {view.name}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{view.created}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{view.updated}</td>
+                  <td className="px-4 py-3">
+                    <span className="flex items-center gap-2 text-foreground">
+                      <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                        {view.owner.charAt(0)}
+                      </span>
+                      {view.owner}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Dropdown
+                      align="end"
+                      trigger={
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-muted"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      }
+                      items={[
+                        {
+                          id: 'open',
+                          label: 'Open view',
+                          icon: <ExternalLink className="w-4 h-4" />,
+                          onClick: () => navigate(view.href),
+                        },
+                        {
+                          id: 'edit',
+                          label: 'Edit view',
+                          onClick: () => navigate('/dashboard/views/new'),
+                        },
+                        {
+                          id: 'sep',
+                          label: '',
+                          separator: true,
+                        },
+                        {
+                          id: 'delete',
+                          label: 'Delete view',
+                          icon: <Trash2 className="w-4 h-4" />,
+                          destructive: true,
+                          onClick: () => {
+                            removeView(view.id);
+                            addToast({ title: 'View deleted', type: 'success' });
+                          },
+                        },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))
             )}
-          >
-            <v.icon className="w-4 h-4" />
-            {v.label}
-          </button>
-        ))}
+          </tbody>
+        </table>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((view) => {
-          const Icon = views.find((v) => v.id === view.type)?.icon ?? LayoutGrid;
-          return (
-            <motion.div
-              key={view.name}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => navigate(view.href)}
-              className="bg-card border border-border rounded-2xl p-4 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm text-foreground">{view.name}</h3>
-                  <p className="text-[11px] text-muted-foreground">{view.project}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                <span className="text-xs text-muted-foreground">{view.tasks} tasks</span>
-                <span className="text-[10px] font-medium capitalize text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                  {view.type}
-                </span>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      <NewViewModal open={newViewOpen} onClose={() => setNewViewOpen(false)} />
     </div>
   );
 }

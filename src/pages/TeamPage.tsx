@@ -1,153 +1,201 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Search, UserPlus, MoreHorizontal, Mail, Shield, ShieldCheck, ShieldAlert, Circle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { UserPlus, Plus, ChevronDown, MoreHorizontal, Mail, Pencil, Trash2, UserMinus } from 'lucide-react';
 import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Card } from '../components/Card';
+import { Dropdown } from '../components/ui/Dropdown';
 import { useTeamStore } from '../store/useTeamStore';
 import { useUIStore } from '../store/useUIStore';
-import { fadeInUp, staggerContainer } from '../animations/variants';
 import { cn } from '../utils/cn';
+import { Link } from 'react-router-dom';
 
-const roleIcons = {
-  Admin: ShieldAlert,
-  Manager: ShieldCheck,
-  Member: Shield,
-};
-
-const roleColors: Record<string, string> = {
-  Admin: 'bg-violet-500/10 text-violet-500',
-  Manager: 'bg-blue-500/10 text-blue-500',
-  Member: 'bg-slate-500/10 text-slate-400',
-};
-
-const statusColors: Record<string, string> = {
-  Online: 'bg-emerald-500',
-  Offline: 'bg-slate-400',
-  'In a meeting': 'bg-amber-500',
-};
+type SortKey = 'name' | 'joined' | 'lastSeen';
 
 export function TeamPage() {
-  const [search, setSearch] = useState('');
   const { members, removeMember } = useTeamStore();
   const { openInviteMemberModal, addToast } = useUIStore();
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDesc, setSortDesc] = useState(false);
 
-  const filteredMembers = members.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.role.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const sorted = useMemo(() => {
+    return [...members].sort((a, b) => {
+      const cmp = String(a[sortKey]).localeCompare(String(b[sortKey]));
+      return sortDesc ? -cmp : cmp;
+    });
+  }, [members, sortKey, sortDesc]);
+
+  const handleRemove = (id: number, name: string) => {
+    if (id === 0) {
+      addToast({ title: 'Cannot remove application', type: 'error' });
+      return;
+    }
+    removeMember(id);
+    addToast({ title: 'Member removed', description: `${name} was removed from the workspace.`, type: 'success' });
+  };
 
   return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
-      <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Team</h1>
-          <p className="text-sm text-muted-foreground mt-1">{members.length} members across your workspace.</p>
+    <div className="space-y-4 h-full flex flex-col">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-foreground">
+          Members <span className="text-muted-foreground font-normal">{members.length}</span>
+        </h1>
+        <div className="flex items-center gap-2">
+          <Link to="/dashboard/settings/new-team">
+            <Button variant="outline" size="sm" className="h-8 text-xs">
+              New team
+            </Button>
+          </Link>
+          <button
+            type="button"
+            onClick={() => openInviteMemberModal()}
+            className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted"
+            title="Invite member"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
         </div>
-        <Button onClick={() => openInviteMemberModal()} className="gap-2 shadow-lg shadow-primary/20">
-          <UserPlus className="w-4 h-4" /> Invite Member
-        </Button>
-      </motion.div>
+      </div>
 
-      {/* Stats */}
-      <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { label: 'Total Members', value: members.length, color: 'text-primary', bg: 'bg-primary/10' },
-          { label: 'Online Now', value: members.filter(m => m.status === 'Online').length, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Admins', value: members.filter(m => m.role === 'Admin').length, color: 'text-violet-500', bg: 'bg-violet-500/10' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-card border border-border/50 rounded-2xl p-5 card-hover">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
-              <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center`}>
-                <UserPlus className={`w-4 h-4 ${stat.color}`} />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-          </div>
-        ))}
-      </motion.div>
-
-      {/* Search */}
-      <motion.div variants={fadeInUp} className="flex items-center gap-4 bg-card p-2 rounded-2xl border border-border/50">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9 h-10" placeholder="Search members..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-      </motion.div>
-
-      {/* Members Table */}
-      <motion.div variants={fadeInUp}>
-        <Card className="overflow-hidden border-border/50">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/20">
-                  <th className="text-left px-6 py-3.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Member</th>
-                  <th className="text-left px-6 py-3.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-                  <th className="text-left px-6 py-3.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="text-right px-6 py-3.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredMembers.map((member) => {
-                  const RoleIcon = roleIcons[member.role];
-                  return (
-                    <motion.tr
-                      key={member.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-muted/20 transition-colors group"
+      <div className="flex-1 bg-card border border-border rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 hover:text-foreground"
+                  onClick={() => {
+                    if (sortKey === 'name') setSortDesc(!sortDesc);
+                    else {
+                      setSortKey('name');
+                      setSortDesc(false);
+                    }
+                  }}
+                >
+                  Name{' '}
+                  <ChevronDown className={cn('w-3.5 h-3.5', sortKey === 'name' && sortDesc && 'rotate-180')} />
+                </button>
+              </th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Joined</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Teams</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Last seen</th>
+              <th className="w-12 px-2 py-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((member) => (
+              <tr
+                key={member.id}
+                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group"
+              >
+                <td className="px-4 py-3">
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      className={cn(
+                        'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+                        member.role === 'Application'
+                          ? 'bg-foreground text-background'
+                          : 'bg-muted text-foreground'
+                      )}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-violet-500/20 flex items-center justify-center font-bold text-primary text-sm">
-                            {member.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="font-medium text-foreground text-sm">{member.name}</div>
-                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Mail className="w-3 h-3" /> {member.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <RoleIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full', roleColors[member.role])}>
-                            {member.role}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className={cn('w-2 h-2 rounded-full', statusColors[member.status] || 'bg-slate-400')} />
-                          <span className="text-xs text-muted-foreground">{member.status}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openInviteMemberModal(member.id)}>
-                            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { removeMember(member.id); addToast({ title: 'Member removed', type: 'error' }); }}>
-                            <Circle className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {filteredMembers.length === 0 && (
-              <div className="p-8 text-center text-sm text-muted-foreground">No members found matching your search.</div>
-            )}
-          </div>
-        </Card>
-      </motion.div>
-    </motion.div>
+                      {member.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="font-medium text-foreground">{member.name}</span>
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={cn(
+                      'text-xs font-medium px-2 py-0.5 rounded-md',
+                      member.role === 'Admin'
+                        ? 'bg-indigo-500/15 text-indigo-400'
+                        : member.role === 'Application'
+                          ? 'text-muted-foreground'
+                          : 'bg-muted text-muted-foreground'
+                    )}
+                  >
+                    {member.role}
+                    {member.invited ? ' (Invited)' : ''}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{member.joined}</td>
+                <td className="px-4 py-3">
+                  {member.teams.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <UserPlus className="w-3 h-3" />
+                      {member.teams[0]}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {member.lastSeen === 'Online' ? (
+                    <span className="flex items-center gap-1.5 text-xs text-foreground">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Online
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{member.lastSeen}</span>
+                  )}
+                </td>
+                <td className="px-2 py-3 text-right">
+                  {member.role !== 'Application' && (
+                    <Dropdown
+                      align="end"
+                      trigger={
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-muted transition-opacity"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      }
+                      items={[
+                        {
+                          id: 'edit',
+                          label: 'Edit member',
+                          icon: <Pencil className="w-4 h-4" />,
+                          onClick: () => openInviteMemberModal(member.id),
+                        },
+                        ...(member.invited
+                          ? [
+                              {
+                                id: 'resend',
+                                label: 'Resend invite',
+                                icon: <Mail className="w-4 h-4" />,
+                                onClick: () =>
+                                  addToast({
+                                    title: 'Invite resent',
+                                    description: `Sent again to ${member.email}.`,
+                                    type: 'success',
+                                  }),
+                              },
+                            ]
+                          : []),
+                        {
+                          id: 'suspend',
+                          label: 'Suspend access',
+                          icon: <UserMinus className="w-4 h-4" />,
+                          onClick: () =>
+                            addToast({ title: 'Member suspended', type: 'default' }),
+                        },
+                        { id: 'sep', label: '', separator: true },
+                        {
+                          id: 'remove',
+                          label: 'Remove from workspace',
+                          icon: <Trash2 className="w-4 h-4" />,
+                          destructive: true,
+                          onClick: () => handleRemove(member.id, member.name),
+                        },
+                      ]}
+                    />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

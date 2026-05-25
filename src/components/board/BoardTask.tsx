@@ -29,7 +29,7 @@ export function BoardTask({ task }: BoardTaskProps) {
   }
 
   const priority = task.priority as keyof typeof PRIORITY_COLORS;
-  const issueId = task.id.toUpperCase().replace(/^T/, 'DEV-');
+  const taskId = task.id.toUpperCase().replace(/^T/, 'DEV-');
 
   return (
     <div
@@ -43,7 +43,7 @@ export function BoardTask({ task }: BoardTaskProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {show('id') && (
-            <span className="text-[11px] font-mono text-muted-foreground shrink-0">{issueId}</span>
+            <span className="text-[11px] font-mono text-muted-foreground shrink-0">{taskId}</span>
           )}
           {show('priority') && priority && task.priority === 'High' && (
             <Flag className="w-3.5 h-3.5 text-orange-500 shrink-0" />

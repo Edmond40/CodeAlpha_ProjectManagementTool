@@ -26,6 +26,9 @@ import { CalendarPage } from './pages/CalendarPage';
 import { TeamPage } from './pages/TeamPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SettingsLayout } from './layouts/SettingsLayout';
+import { CreateTeamPage } from './pages/CreateTeamPage';
+import { NewViewPage } from './pages/NewViewPage';
 import { LandingPage } from './pages/LandingPage';
 
 createRoot(document.getElementById('root')!).render(
@@ -54,11 +57,23 @@ createRoot(document.getElementById('root')!).render(
           <Route path="my-tasks" element={<MyTasksPage />} />
           <Route path="drafts" element={<DraftsPage />} />
           <Route path="views" element={<ViewsPage />} />
+          <Route path="views/new" element={<NewViewPage />} />
           <Route path="sprints" element={<SprintPage />} />
           <Route path="roadmaps" element={<RoadmapPage />} />
           <Route path="team" element={<TeamPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings" element={<SettingsLayout />}>
+            <Route index element={<SettingsPage />} />
+            <Route path="profile" element={<SettingsPage />} />
+            <Route path="notifications" element={<SettingsPage />} />
+            <Route path="security" element={<SettingsPage />} />
+            <Route path="new-team" element={<CreateTeamPage />} />
+            <Route path="labels" element={<SettingsPage />} />
+            <Route path="templates" element={<SettingsPage />} />
+            <Route path="slas" element={<SettingsPage />} />
+            <Route path="statuses" element={<SettingsPage />} />
+            <Route path="ai" element={<SettingsPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

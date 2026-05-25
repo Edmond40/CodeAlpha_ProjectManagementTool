@@ -6,6 +6,7 @@ import { Input } from '../Input';
 import { Select, PillSelect } from '../ui/Select';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { useUIStore } from '../../store/useUIStore';
+import { useViewsStore, type SavedViewType } from '../../store/useViewsStore';
 
 interface NewViewModalProps {
   open: boolean;
@@ -13,12 +14,21 @@ interface NewViewModalProps {
 }
 
 export function NewViewModal({ open, onClose }: NewViewModalProps) {
-  const [name, setName] = useState('All issues');
-  const [type, setType] = useState<'issues' | 'projects'>('issues');
+  const [name, setName] = useState('All tasks');
+  const [type, setType] = useState<SavedViewType>('tasks');
   const [saveTo, setSaveTo] = useState('personal');
   const { addToast } = useUIStore();
+  const { addView } = useViewsStore();
 
   const handleSave = () => {
+    const href = type === 'tasks' ? '/dashboard/boards' : '/dashboard/projects';
+    addView({
+      name: name.trim() || 'Untitled view',
+      type,
+      owner: 'Alex Morgan',
+      href,
+      description: saveTo === 'team' ? 'Team view' : undefined,
+    });
     addToast({ title: 'View saved', description: `"${name}" is now available.`, type: 'success' });
     onClose();
   };
@@ -73,7 +83,7 @@ export function NewViewModal({ open, onClose }: NewViewModalProps) {
                 onChange={setType}
                 size="sm"
                 options={[
-                  { value: 'issues', label: 'Issues' },
+                  { value: 'tasks', label: 'Tasks' },
                   { value: 'projects', label: 'Projects' },
                 ]}
               />
