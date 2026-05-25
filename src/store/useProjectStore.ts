@@ -22,7 +22,7 @@ interface ProjectState {
   projects: Project[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  filteredProjects: () => Project[];
+  filteredProjects: (statusFilter?: string[]) => Project[];
   addProject: (project: Omit<Project, 'id'>) => void;
   updateProject: (id: number, project: Partial<Project>) => void;
   removeProject: (id: number) => void;
@@ -32,14 +32,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: initialProjects,
   searchQuery: '',
   setSearchQuery: (query) => set({ searchQuery: query }),
-  filteredProjects: () => {
+  filteredProjects: (statusFilter?: string[]) => {
     const { projects, searchQuery } = get();
-    if (!searchQuery) return projects;
-    const lowerQuery = searchQuery.toLowerCase();
-    return projects.filter(p => 
-      p.name.toLowerCase().includes(lowerQuery) || 
-      p.description.toLowerCase().includes(lowerQuery)
-    );
+    let result = projects;
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lowerQuery) ||
+          p.description.toLowerCase().includes(lowerQuery)
+      );
+    }
+    if (statusFilter?.length) {
+      result = result.filter((p) => statusFilter.includes(p.status));
+    }
+    return result;
   },
   addProject: (project) => set((state) => ({
     projects: [...state.projects, { ...project, id: Date.now() }]

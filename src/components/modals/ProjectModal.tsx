@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { X, Trash2, Box, Flag, Users, Calendar } from 'lucide-react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUIStore } from '../../store/useUIStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { Button } from '../Button';
 import { Input } from '../Input';
+import { PillSelect } from '../ui/Select';
 
 const schema = z.object({
   name: z.string().min(1, 'Project name is required'),
@@ -18,17 +19,23 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const statusOptions = [
+  { value: 'Planning', label: 'Backlog', icon: <Box className="w-3.5 h-3.5 text-slate-400" /> },
+  { value: 'In Progress', label: 'In Progress', icon: <Box className="w-3.5 h-3.5 text-amber-400" /> },
+  { value: 'Review', label: 'In Review', icon: <Box className="w-3.5 h-3.5 text-violet-400" /> },
+  { value: 'Completed', label: 'Done', icon: <Box className="w-3.5 h-3.5 text-emerald-400" /> },
+];
+
 export function ProjectModal() {
   const { isProjectModalOpen, activeProjectId, closeProjectModal, addToast } = useUIStore();
   const { projects, addProject, updateProject, removeProject } = useProjectStore();
 
-  const project = activeProjectId ? projects.find(p => p.id === activeProjectId) : null;
+  const project = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
   });
 
-  // Populate form when editing
   useEffect(() => {
     if (project) {
       reset({
@@ -42,7 +49,6 @@ export function ProjectModal() {
     }
   }, [project, reset, isProjectModalOpen]);
 
-  // Escape key closes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeProjectModal();
@@ -53,7 +59,7 @@ export function ProjectModal() {
 
   const onSubmit = (data: FormValues) => {
     if (project) {
-      updateProject(project.id, { name: data.name, description: data.description, deadline: data.deadline, status: data.status });
+      updateProject(project.id, data);
       addToast({ title: 'Project updated', description: `"${data.name}" has been saved.`, type: 'success' });
     } else {
       addProject({
@@ -84,72 +90,92 @@ export function ProjectModal() {
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           onClick={closeProjectModal}
         />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-lg bg-background rounded-2xl shadow-2xl border p-6"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="relative w-full max-w-2xl bg-background rounded-2xl shadow-2xl border border-border p-6 max-h-[90vh] overflow-y-auto"
         >
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-start mb-5">
             <div>
-              <h2 className="text-xl font-bold">{project ? 'Edit Project' : 'New Project'}</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">{project ? 'Update project details.' : 'Create a new project workspace.'}</p>
+              <p className="text-xs text-muted-foreground font-medium">DEV › {project ? 'Edit project' : 'New project'}</p>
+              <h2 className="text-xl font-bold text-foreground mt-0.5">
+                {project ? project.name : 'New project'}
+              </h2>
             </div>
-            <button onClick={closeProjectModal} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
+            <button
+              onClick={closeProjectModal}
+              className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Project Name</label>
-              <Input {...register('name')} placeholder="e.g. Mobile App Redesign" error={!!errors.name} />
-              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
-            </div>
+            <Input
+              {...register('name')}
+              placeholder="Project name"
+              error={!!errors.name}
+              className="text-lg font-bold border-0 px-0 focus-visible:ring-0 bg-transparent"
+            />
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
 
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Description</label>
-              <textarea
-                {...register('description')}
-                placeholder="Describe the project goals and scope..."
-                className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px] resize-none placeholder:text-muted-foreground"
+            <textarea
+              {...register('description')}
+              placeholder="Write a description, project brief, or collect ideas..."
+              className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[120px] resize-none"
+            />
+
+            <div className="flex flex-wrap gap-2">
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <PillSelect value={field.value} onChange={field.onChange} options={statusOptions} />
+                )}
               />
-              {errors.description && <p className="text-xs text-destructive mt-1">{errors.description.message}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Status</label>
-                <select
-                  {...register('status')}
-                  className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="Planning">Planning</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Review">Review</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Deadline</label>
-                <Input type="date" {...register('deadline')} error={!!errors.deadline} />
-                {errors.deadline && <p className="text-xs text-destructive mt-1">{errors.deadline.message}</p>}
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-muted/50 text-xs font-medium text-muted-foreground"
+              >
+                <Flag className="w-3.5 h-3.5" /> No priority
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-muted/50 text-xs font-medium text-muted-foreground"
+              >
+                <Users className="w-3.5 h-3.5" /> Members
+              </button>
+              <div className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-muted/50 text-xs font-medium text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5" />
+                <Input type="date" {...register('deadline')} className="h-6 border-0 p-0 text-xs bg-transparent w-auto" />
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t">
+            <div className="flex justify-between items-center pt-4 border-t border-border">
               {project ? (
-                <Button type="button" variant="ghost" onClick={handleDelete} className="text-destructive hover:bg-destructive/10">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleDelete}
+                  className="text-destructive hover:bg-destructive/10"
+                >
                   <Trash2 className="mr-2 h-4 w-4" /> Delete
                 </Button>
               ) : (
-                <div /> // Spacer
+                <div />
               )}
               <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={closeProjectModal}>Cancel</Button>
-                <Button type="submit">{project ? 'Save Changes' : 'Create Project'}</Button>
+                <Button type="button" variant="outline" onClick={closeProjectModal}>
+                  Cancel
+                </Button>
+                <Button type="submit">{project ? 'Save' : 'Create project'}</Button>
               </div>
             </div>
           </form>

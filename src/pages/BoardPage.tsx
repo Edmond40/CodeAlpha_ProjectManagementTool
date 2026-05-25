@@ -6,23 +6,64 @@ import {
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragOverEvent, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { Filter, Plus } from 'lucide-react';
+import { Plus, Star } from 'lucide-react';
 
 import { useBoardStore } from '../store/useBoardStore';
 import type { Column, Task } from '../store/useBoardStore';
 import { useUIStore } from '../store/useUIStore';
+import { useFilterStore } from '../store/useFilterStore';
 import { BoardColumn } from '../components/board/BoardColumn';
 import { BoardTask } from '../components/board/BoardTask';
 import { Button } from '../components/Button';
+import { AdvancedFilterMenu } from '../components/ui/AdvancedFilterMenu';
+import { ViewOptionsPopover } from '../components/ui/ViewOptionsPopover';
+import { HiddenColumnsPanel } from '../components/ui/HiddenColumnsPanel';
+import { TabFilters } from '../components/ui/TabFilters';
+import { filterAndSortTasks } from '../utils/filterTasks';
 
+const ISSUE_TABS = [
+  { value: 'all' as const, label: 'All issues' },
+  { value: 'active' as const, label: 'Active' },
+  { value: 'backlog' as const, label: 'Backlog' },
+  { value: 'dashboard-done' as const, label: 'dashboard done' },
+];
 
 export function BoardPage() {
   const { columns, tasks, moveTask, reorderColumn, setTasks } = useBoardStore();
-  const { openCreateTaskModal, openCreateColumnModal } = useUIStore();
+  const { openCreateTaskModal, openCreateColumnModal, openTaskModal } = useUIStore();
+  const {
+    boardFilters,
+    viewOptions,
+    issueViewTab,
+    setIssueViewTab,
+    hiddenColumnIds,
+  } = useFilterStore();
   const [activeColumn, setActiveColumn] = useState<Column | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  const columnsId = useMemo(() => columns.map((col) => col.id), [columns]);
+  const filteredTasks = useMemo(
+    () => filterAndSortTasks(tasks, boardFilters, viewOptions, issueViewTab),
+    [tasks, boardFilters, viewOptions, issueViewTab]
+  );
+
+  const visibleColumns = useMemo(() => {
+    let cols = columns.filter((c) => !hiddenColumnIds.includes(c.id));
+    if (!viewOptions.showEmptyColumns) {
+      cols = cols.filter((col) => filteredTasks.some((t) => t.columnId === col.id));
+    }
+    return cols;
+  }, [columns, filteredTasks, viewOptions.showEmptyColumns, hiddenColumnIds]);
+
+  const columnsId = useMemo(() => visibleColumns.map((col) => col.id), [visibleColumns]);
+
+  const assigneeOptions = [...new Set(tasks.flatMap((t) => t.assignees))].map((a) => ({
+    value: a,
+    label: a,
+  }));
+  const labelOptions = [...new Set(tasks.flatMap((t) => t.labels))].map((l) => ({
+    value: l,
+    label: l,
+  }));
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -36,129 +77,124 @@ export function BoardPage() {
     }
     if (event.active.data.current?.type === 'Task') {
       setActiveTask(event.active.data.current.task);
-      return;
     }
   }
 
   function onDragOver(event: DragOverEvent) {
     const { active, over } = event;
     if (!over) return;
-
     const activeId = active.id;
     const overId = over.id;
     if (activeId === overId) return;
+    if (active.data.current?.type !== 'Task') return;
 
-    const isActiveTask = active.data.current?.type === 'Task';
     const isOverTask = over.data.current?.type === 'Task';
     const isOverColumn = over.data.current?.type === 'Column';
 
-    if (!isActiveTask) return;
-
-    // Dropping task over another task
-    if (isActiveTask && isOverTask) {
+    if (isOverTask) {
       const activeIndex = tasks.findIndex((t) => t.id === activeId);
       const overIndex = tasks.findIndex((t) => t.id === overId);
-
       if (tasks[activeIndex].columnId !== tasks[overIndex].columnId) {
         moveTask(activeId as string, tasks[overIndex].columnId, overIndex);
       } else {
-        const newTasks = arrayMove(tasks, activeIndex, overIndex);
-        setTasks(newTasks);
+        setTasks(arrayMove(tasks, activeIndex, overIndex));
       }
     }
-
-    // Dropping task over an empty column
-    if (isActiveTask && isOverColumn) {
-      moveTask(activeId as string, overId as string, tasks.filter(t => t.columnId === overId).length);
+    if (isOverColumn) {
+      moveTask(activeId as string, overId as string, tasks.filter((t) => t.columnId === overId).length);
     }
   }
 
   function onDragEnd(event: DragEndEvent) {
     setActiveColumn(null);
     setActiveTask(null);
-
     const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const isActiveColumn = active.data.current?.type === 'Column';
-    if (isActiveColumn) {
-      reorderColumn(activeId as string, overId as string);
+    if (!over || active.id === over.id) return;
+    if (active.data.current?.type === 'Column') {
+      reorderColumn(active.id as string, over.id as string);
     }
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 shrink-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Sprint Board</h1>
-          <p className="text-muted-foreground mt-1">TaskFlow Redesign</p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <div className="flex -space-x-2 mr-4">
-            {['A', 'B', 'C'].map((avatar, i) => (
-              <div key={i} className="h-8 w-8 rounded-full bg-secondary border-2 border-background flex items-center justify-center text-xs font-bold z-10 hover:z-20 transition-transform hover:scale-110">
-                {avatar}
-              </div>
-            ))}
-            <button className="h-8 w-8 rounded-full bg-muted border-2 border-border flex items-center justify-center text-muted-foreground hover:bg-secondary z-10">
-              <Plus className="h-4 w-4" />
+    <div className="flex flex-col h-full overflow-hidden -m-4 sm:-m-6 lg:-m-8 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col gap-3 mb-4 shrink-0">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Issues</h1>
+            <button type="button" className="text-muted-foreground hover:text-amber-400 transition-colors">
+              <Star className="w-4 h-4" />
             </button>
           </div>
-          <Button variant="outline"><Filter className="mr-2 h-4 w-4" /> Filter</Button>
-          <Button onClick={() => openCreateTaskModal()}><Plus className="mr-2 h-4 w-4" /> Create Task</Button>
+          <div className="flex items-center gap-2">
+            <AdvancedFilterMenu assigneeOptions={assigneeOptions} labelOptions={labelOptions} />
+            <ViewOptionsPopover />
+            <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => openCreateTaskModal()}>
+              <Plus className="w-3.5 h-3.5" /> New issue
+            </Button>
+          </div>
         </div>
+        <TabFilters value={issueViewTab} onChange={setIssueViewTab} tabs={ISSUE_TABS} />
       </div>
 
-      {/* Board Canvas */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragEnd={onDragEnd}
-        >
-          <div className="flex gap-6 h-full px-1">
-            <SortableContext items={columnsId} strategy={horizontalListSortingStrategy}>
-              {columns.map((col) => (
-                <BoardColumn
-                  key={col.id}
-                  column={col}
-                  tasks={tasks.filter((task) => task.columnId === col.id)}
-                />
-              ))}
-            </SortableContext>
-            
-            <button 
-              onClick={() => openCreateColumnModal()}
-              className="flex-shrink-0 w-80 rounded-2xl border-2 border-dashed border-border bg-transparent hover:bg-muted/50 hover:border-muted-foreground transition-colors h-14 flex items-center justify-center text-muted-foreground font-medium gap-2"
-            >
-              <Plus className="h-5 w-5" />
-              Add Column
-            </button>
-          </div>
-
-          {createPortal(
-            <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
-              {activeColumn && (
-                <BoardColumn
-                  column={activeColumn}
-                  tasks={tasks.filter((task) => task.columnId === activeColumn.id)}
-                />
-              )}
-              {activeTask && <BoardTask task={activeTask} />}
-            </DragOverlay>,
-            document.body
+      {viewOptions.layout === 'list' ? (
+        <div className="flex-1 overflow-y-auto bg-card border border-border rounded-xl">
+          {filteredTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-16">No issues match your filters.</p>
+          ) : (
+            filteredTasks.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                onClick={() => openTaskModal(task.id)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 border-b border-border text-left transition-colors"
+              >
+                <span className="text-xs font-mono text-muted-foreground w-14">{task.id.toUpperCase()}</span>
+                <span className="text-sm text-foreground flex-1">{task.title}</span>
+                <span className="text-xs text-muted-foreground">May 22</span>
+              </button>
+            ))
           )}
-        </DndContext>
-      </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2 min-h-0">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+          >
+            <div className="flex gap-3 h-full min-w-max px-0.5">
+              <SortableContext items={columnsId} strategy={horizontalListSortingStrategy}>
+                {visibleColumns.map((col) => (
+                  <BoardColumn
+                    key={col.id}
+                    column={col}
+                    tasks={filteredTasks.filter((task) => task.columnId === col.id)}
+                  />
+                ))}
+              </SortableContext>
+              <button
+                type="button"
+                onClick={() => openCreateColumnModal()}
+                className="flex-shrink-0 w-64 rounded-xl border border-dashed border-border hover:bg-muted/20 h-12 flex items-center justify-center text-muted-foreground text-sm gap-1.5 mt-10"
+              >
+                <Plus className="w-4 h-4" /> Add column
+              </button>
+              <HiddenColumnsPanel />
+            </div>
+            {createPortal(
+              <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }) }}>
+                {activeColumn && (
+                  <BoardColumn column={activeColumn} tasks={filteredTasks.filter((t) => t.columnId === activeColumn.id)} />
+                )}
+                {activeTask && <BoardTask task={activeTask} />}
+              </DragOverlay>,
+              document.body
+            )}
+          </DndContext>
+        </div>
+      )}
     </div>
   );
 }

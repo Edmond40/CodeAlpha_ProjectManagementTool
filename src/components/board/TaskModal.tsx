@@ -7,12 +7,7 @@ import {
 import { useUIStore } from '../../store/useUIStore';
 import { useBoardStore } from '../../store/useBoardStore';
 import { Button } from '../Button';
-
-const PRIORITY_COLORS = {
-  High: 'bg-destructive/10 text-destructive',
-  Medium: 'bg-yellow-400 text-yellow-100',
-  Low: 'bg-slate-500/10 text-slate-200',
-};
+import { PillSelect } from '../ui/Select';
 
 export function TaskModal() {
   const { isTaskModalOpen, activeTaskId, closeTaskModal, addToast } = useUIStore();
@@ -97,7 +92,7 @@ export function TaskModal() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-background rounded shadow-2xl border flex  flex-col md:flex-row text-white"
+            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-background rounded-2xl shadow-2xl border border-border flex flex-col md:flex-row text-foreground"
           >
             {/* ── Main Content ── */}
             <div className="flex-1 p-6 md:p-8 space-y-8 min-w-0 ">
@@ -132,19 +127,27 @@ export function TaskModal() {
                 </button>
               </div>
 
-              {/* Priority badge */}
-              <div className="flex items-center gap-2">
-                <Flag className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Priority:</span>
-                {(['Low', 'Medium', 'High'] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => { updateTask({ priority: p }); addToast({ title: `Priority set to ${p}`, type: 'success' }); }}
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${task.priority === p ? PRIORITY_COLORS[p] + ' ring-2 ring-offset-1 ring-current' : 'bg-muted text-muted-foreground hover:bg-secondary'}`}
-                  >
-                    {p}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <PillSelect
+                  value={task.priority}
+                  onChange={(p) => {
+                    updateTask({ priority: p as typeof task.priority });
+                    addToast({ title: `Priority set to ${p}`, type: 'success' });
+                  }}
+                  options={[
+                    { value: 'Low', label: 'Low', icon: <Flag className="w-3.5 h-3.5 text-slate-400" /> },
+                    { value: 'Medium', label: 'Medium', icon: <Flag className="w-3.5 h-3.5 text-amber-400" /> },
+                    { value: 'High', label: 'High', icon: <Flag className="w-3.5 h-3.5 text-red-500" /> },
+                  ]}
+                />
+                <PillSelect
+                  value={task.columnId}
+                  onChange={(colId) => {
+                    updateTask({ columnId: colId });
+                    addToast({ title: 'Status updated', type: 'success' });
+                  }}
+                  options={columns.map((c) => ({ value: c.id, label: c.title }))}
+                />
               </div>
 
               {/* Description */}
@@ -242,7 +245,7 @@ export function TaskModal() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Priority</span>
-                    <span className={`font-semibold px-2 py-0.5 rounded text-xs ${PRIORITY_COLORS[task.priority]}`}>{task.priority}</span>
+                    <span className="font-semibold px-2 py-0.5 rounded text-xs bg-muted text-foreground">{task.priority}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Comments</span>

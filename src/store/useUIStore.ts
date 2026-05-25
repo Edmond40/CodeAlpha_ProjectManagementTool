@@ -32,6 +32,10 @@ interface UIState {
   openCreateColumnModal: () => void;
   closeCreateColumnModal: () => void;
 
+  isSearchModalOpen: boolean;
+  openSearchModal: () => void;
+  closeSearchModal: () => void;
+
   toasts: Toast[];
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
@@ -61,6 +65,10 @@ export const useUIStore = create<UIState>((set) => ({
   isCreateColumnModalOpen: false,
   openCreateColumnModal: () => set({ isCreateColumnModalOpen: true }),
   closeCreateColumnModal: () => set({ isCreateColumnModalOpen: false }),
+
+  isSearchModalOpen: false,
+  openSearchModal: () => set({ isSearchModalOpen: true }),
+  closeSearchModal: () => set({ isSearchModalOpen: false }),
 
   toasts: [],
   addToast: (toast) => {

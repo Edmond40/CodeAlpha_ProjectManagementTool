@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, GitBranch, Globe } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 
@@ -21,20 +21,14 @@ export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterForm>({
+  const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (data: RegisterForm) => {
+  const onSubmit = async (_data: RegisterForm) => {
     setIsLoading(true);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsLoading(false);
-    console.log('Register attempt:', data);
     navigate('/dashboard');
   };
 
@@ -50,12 +44,7 @@ export function RegisterPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1">
           <label className="text-sm font-medium text-foreground">Full Name</label>
-          <Input
-            type="text"
-            placeholder="John Doe"
-            error={!!errors.fullName}
-            {...register('fullName')}
-          />
+          <Input type="text" placeholder="John Doe" error={!!errors.fullName} {...register('fullName')} />
           {errors.fullName && (
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-destructive">
               {errors.fullName.message}
@@ -65,12 +54,7 @@ export function RegisterPage() {
 
         <div className="space-y-1">
           <label className="text-sm font-medium text-foreground">Email</label>
-          <Input
-            type="email"
-            placeholder="name@company.com"
-            error={!!errors.email}
-            {...register('email')}
-          />
+          <Input type="email" placeholder="name@company.com" error={!!errors.email} {...register('email')} />
           {errors.email && (
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-destructive">
               {errors.email.message}
@@ -81,17 +65,8 @@ export function RegisterPage() {
         <div className="space-y-1">
           <label className="text-sm font-medium text-foreground">Password</label>
           <div className="relative">
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              error={!!errors.password}
-              {...register('password')}
-            />
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => setShowPassword(!showPassword)}
-            >
+            <Input type={showPassword ? 'text' : 'password'} placeholder="••••••••" error={!!errors.password} {...register('password')} />
+            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)}>
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
@@ -102,16 +77,32 @@ export function RegisterPage() {
           )}
         </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full h-11" disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Create Account'}
         </Button>
       </form>
 
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-2 text-muted-foreground">or continue with</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="outline" className="h-10 text-xs gap-2" onClick={() => navigate('/dashboard')}>
+          <GitBranch className="w-4 h-4" /> GitHub
+        </Button>
+        <Button variant="outline" className="h-10 text-xs gap-2" onClick={() => navigate('/dashboard')}>
+          <Globe className="w-4 h-4" /> Google
+        </Button>
+      </div>
+
       <div className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link to="/auth/login" className="font-medium text-primary hover:underline">
-          Sign in
-        </Link>
+        <Link to="/auth/login" className="font-medium text-primary hover:underline">Sign in</Link>
       </div>
     </div>
   );
