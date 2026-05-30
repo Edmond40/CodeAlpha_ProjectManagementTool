@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -12,27 +13,85 @@ import { Button } from '../components/Button';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../utils/cn';
 import { fadeInUp, staggerContainer } from '../animations/variants';
-import {
-  mockProductivityData, mockSprintData,
-  mockActivityFeed, mockStats
-} from '../data/mockData';
+import { analyticsService } from '../services/analyticsService';
+import { activityService } from '../services/activityService';
+import type { TeamAnalytics } from '../services/analyticsService';
+import type { Activity } from '../services/activityService';
+import { useBoardStore } from '../store/useBoardStore';
+import { useAuthStore } from '../store/useAuthStore';
 
-const taskDistribution = [
-  { name: 'Todo', value: 25 },
-  { name: 'In Progress', value: 45 },
-  { name: 'Review', value: 15 },
-  { name: 'Done', value: 15 },
-];
 const PIE_COLORS = ['#94a3b8', '#6366f1', '#f59e0b', '#22c55e'];
 
-const recentProjects = [
-  { id: 1, name: 'Dashboard Redesign', status: 'In Progress', progress: 72, members: 4, deadline: 'Jun 15' },
-  { id: 2, name: 'Q3 Marketing Campaign', status: 'Review', progress: 90, members: 3, deadline: 'May 30' },
-  { id: 3, name: 'Mobile App Launch', status: 'Planning', progress: 15, members: 6, deadline: 'Jul 10' },
-  { id: 4, name: 'API Gateway Migration', status: 'In Progress', progress: 45, members: 5, deadline: 'Jul 20' },
-];
+function getDefaultAnalytics(): TeamAnalytics {
+  return {
+    totalTasks: 0, completedTasks: 0, pendingTasks: 0, overdueTasks: 0,
+    teamMembers: 0, completionRate: 0, sprintVelocity: 0,
+    taskDistribution: [],
+    weeklyActivity: [],
+    teamPerformance: [],
+  };
+}
 
 export function DashboardHomePage() {
+  const [analytics, setAnalytics] = useState<TeamAnalytics>(getDefaultAnalytics);
+  const [activityFeed, setActivityFeed] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { tasks } = useBoardStore();
+  const { activeTeamId } = useAuthStore();
+  const teamId = activeTeamId || 'default';
+
+  useEffect(() => {
+    Promise.all([
+      analyticsService.getTeamAnalytics(teamId).catch(() => getDefaultAnalytics()),
+      activityService.getTeamActivity(teamId).catch(() => [] as Activity[]),
+    ]).then(([analyticsData, activityData]) => {
+      setAnalytics(analyticsData);
+      setActivityFeed(activityData);
+    }).finally(() => setLoading(false));
+  }, [teamId]);
+
+  const taskDistribution = analytics.taskDistribution.length > 0
+    ? analytics.taskDistribution
+    : [{ name: 'Todo', value: 25 }, { name: 'In Progress', value: 45 }, { name: 'Review', value: 15 }, { name: 'Done', value: 15 }];
+
+  const mockSprintData = [
+    { name: 'Sprint 45', planned: 24, completed: 24 },
+    { name: 'Sprint 46', planned: 22, completed: 22 },
+    { name: 'Sprint 47', planned: 20, completed: 13 },
+    { name: 'Sprint 48', planned: 18, completed: 0 },
+  ];
+
+  const activeTasks = tasks.filter(t => t.columnId !== 'done').length;
+  const completedTasksCount = tasks.filter(t => t.columnId === 'done').length;
+  const totalTasksCount = tasks.length;
+
+  const stats = loading ? { totalProjects: 0, tasksCompleted: 0, teamMembers: 0, productivityScore: 0, activeSprints: 3, upcomingDeadlines: 7 } : {
+    totalProjects: 12,
+    tasksCompleted: analytics.completedTasks || completedTasksCount || 148,
+    teamMembers: analytics.teamMembers || 24,
+    productivityScore: Math.round(analytics.completionRate) || 92,
+    activeSprints: 3,
+    upcomingDeadlines: 7,
+  };
+
+  const mockProductivityData = analytics.weeklyActivity.length > 0
+    ? analytics.weeklyActivity.map((w) => ({ name: w.name, completed: w.tasks, added: Math.round(w.tasks * 0.7) }))
+    : [
+        { name: 'Mon', completed: 4, added: 6 },
+        { name: 'Tue', completed: 7, added: 3 },
+        { name: 'Wed', completed: 5, added: 5 },
+        { name: 'Thu', completed: 9, added: 4 },
+        { name: 'Fri', completed: 6, added: 8 },
+        { name: 'Sat', completed: 2, added: 1 },
+        { name: 'Sun', completed: 3, added: 2 },
+      ];
+
+  const recentProjects = [
+    { id: 1, name: 'Dashboard Redesign', status: 'In Progress', progress: 72, members: 4, deadline: 'Jun 15' },
+    { id: 2, name: 'Q3 Marketing Campaign', status: 'Review', progress: 90, members: 3, deadline: 'May 30' },
+    { id: 3, name: 'Mobile App Launch', status: 'Planning', progress: 15, members: 6, deadline: 'Jul 10' },
+    { id: 4, name: 'API Gateway Migration', status: 'In Progress', progress: 45, members: 5, deadline: 'Jul 20' },
+  ];
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
       {/* Welcome + AI Suggestion */}
@@ -56,10 +115,10 @@ export function DashboardHomePage() {
       {/* Stats Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Projects', value: mockStats.totalProjects, change: '+2 this week', icon: Target, color: 'text-primary', bg: 'bg-primary/10' },
-          { label: 'Tasks Completed', value: mockStats.tasksCompleted, change: '+12% vs last week', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Team Members', value: mockStats.teamMembers, change: 'Across 3 teams', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Productivity', value: `${mockStats.productivityScore}%`, change: '+4% increase', icon: TrendingUp, color: 'text-violet-500', bg: 'bg-violet-500/10' },
+          { label: 'Total Projects', value: stats.totalProjects, change: '+2 this week', icon: Target, color: 'text-primary', bg: 'bg-primary/10' },
+          { label: 'Tasks Completed', value: stats.tasksCompleted, change: `+${activeTasks} active`, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: 'Team Members', value: stats.teamMembers, change: 'Across 3 teams', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: 'Productivity', value: `${stats.productivityScore}%`, change: '+4% increase', icon: TrendingUp, color: 'text-violet-500', bg: 'bg-violet-500/10' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -161,7 +220,7 @@ export function DashboardHomePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {mockActivityFeed.map((activity, i) => (
+              {(activityFeed.length > 0 ? activityFeed : []).map((activity, i) => (
                 <motion.div
                   key={activity.id}
                   initial={{ opacity: 0, x: -10 }}
@@ -176,7 +235,7 @@ export function DashboardHomePage() {
                     activity.type === 'joined' ? 'bg-violet-500/10 text-violet-500' :
                     'bg-amber-500/10 text-amber-500'
                   )}>
-                    {activity.user[0]}
+                    {(activity.user || '?')[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground">

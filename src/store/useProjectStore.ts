@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { projectService } from '../services/projectService';
 
 export type Project = {
   id: number;
@@ -11,27 +12,32 @@ export type Project = {
   tasks: { completed: number; total: number };
 };
 
-const initialProjects: Project[] = [
-  { id: 1, name: 'TaskFlow Redesign', description: 'Complete overhaul of the main dashboard and kanban board.', status: 'In Progress', progress: 65, deadline: 'Oct 24', comments: 12, tasks: { completed: 24, total: 36 } },
-  { id: 2, name: 'Q3 Marketing Campaign', description: 'Social media assets, email sequences, and ad copies for Q3.', status: 'Planning', progress: 15, deadline: 'Nov 05', comments: 4, tasks: { completed: 5, total: 42 } },
-  { id: 3, name: 'Mobile App Launch', description: 'React Native app deployment to App Store and Google Play.', status: 'Review', progress: 90, deadline: 'Oct 15', comments: 28, tasks: { completed: 110, total: 120 } },
-  { id: 4, name: 'Customer Portal', description: 'Self-service portal for enterprise customers.', status: 'Completed', progress: 100, deadline: 'Sep 30', comments: 45, tasks: { completed: 85, total: 85 } },
-];
-
 interface ProjectState {
   projects: Project[];
   searchQuery: string;
+  loading: boolean;
+  error: string | null;
+  activeTeamId: string | null;
   setSearchQuery: (query: string) => void;
   filteredProjects: (statusFilter?: string[]) => Project[];
+  setActiveTeamId: (teamId: string) => void;
+  fetchProjects: (teamId: string) => Promise<void>;
   addProject: (project: Omit<Project, 'id'>) => void;
   updateProject: (id: number, project: Partial<Project>) => void;
   removeProject: (id: number) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
-  projects: initialProjects,
+  projects: [],
   searchQuery: '',
+  loading: false,
+  error: null,
+  activeTeamId: null,
+
   setSearchQuery: (query) => set({ searchQuery: query }),
+
+  setActiveTeamId: (teamId) => set({ activeTeamId: teamId }),
+
   filteredProjects: (statusFilter?: string[]) => {
     const { projects, searchQuery } = get();
     let result = projects;
@@ -48,13 +54,61 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
     return result;
   },
-  addProject: (project) => set((state) => ({
-    projects: [...state.projects, { ...project, id: Date.now() }]
-  })),
-  updateProject: (id, updatedFields) => set((state) => ({
-    projects: state.projects.map(p => p.id === id ? { ...p, ...updatedFields } : p)
-  })),
-  removeProject: (id) => set((state) => ({
-    projects: state.projects.filter(p => p.id !== id)
-  }))
+
+  fetchProjects: async (teamId) => {
+    set({ loading: true, error: null, activeTeamId: teamId });
+    try {
+      const response = await projectService.getTeamProjects(teamId);
+      const mapped: Project[] = response.map((p) => ({
+        id: parseInt(p.id, 36) || Math.floor(Math.random() * 10000),
+        name: p.name,
+        description: p.description,
+        status: p.status as Project['status'],
+        progress: p.progress || 0,
+        deadline: p.deadline || '',
+        comments: p.comments || 0,
+        tasks: p.tasks || { completed: 0, total: 0 },
+      }));
+      set({ projects: mapped, loading: false });
+    } catch (error) {
+      set({ error: (error as Error).message, loading: false });
+    }
+  },
+
+  addProject: (project) => {
+    const { activeTeamId } = get();
+    const newId = Date.now();
+    set((state) => ({
+      projects: [...state.projects, { ...project, id: newId }],
+    }));
+    if (activeTeamId) {
+      projectService.createProject({
+        name: project.name,
+        description: project.description,
+        deadline: project.deadline,
+        status: project.status,
+        teamId: activeTeamId,
+      }).catch(() => {
+        if (activeTeamId) get().fetchProjects(activeTeamId);
+      });
+    }
+  },
+
+  updateProject: (id, updatedFields) => {
+    set((state) => ({
+      projects: state.projects.map(p => p.id === id ? { ...p, ...updatedFields } : p),
+    }));
+    const { activeTeamId } = get();
+    if (activeTeamId) {
+      projectService.updateProject(String(id), updatedFields).catch(() => {
+        if (activeTeamId) get().fetchProjects(activeTeamId);
+      });
+    }
+  },
+
+  removeProject: (id) => {
+    set((state) => ({
+      projects: state.projects.filter(p => p.id !== id),
+    }));
+  },
 }));

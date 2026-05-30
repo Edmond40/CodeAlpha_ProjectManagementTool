@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { TopNavbar } from '../components/TopNavbar';
 import { TaskModal } from '../components/board/TaskModal';
@@ -9,18 +9,43 @@ import { CreateTaskModal } from '../components/modals/CreateTaskModal';
 import { CreateColumnModal } from '../components/modals/CreateColumnModal';
 import { SearchModal } from '../components/modals/SearchModal';
 import { useUIStore } from '../store/useUIStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useBoardStore } from '../store/useBoardStore';
+import { useProjectStore } from '../store/useProjectStore';
+import { useTeamStore } from '../store/useTeamStore';
 import { FAB } from '../components/ui/FAB';
 import { ToastContainer } from '../components/ui/ToastContainer';
 import { initTheme } from '../store/useThemeStore';
+import { Loader2 } from 'lucide-react';
 
 export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openSearchModal, openCreateTaskModal } = useUIStore();
+  const { initialized, token, activeTeamId } = useAuthStore();
+  const { fetchTasks } = useBoardStore();
+  const { fetchProjects } = useProjectStore();
+  const { fetchMembers } = useTeamStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     initTheme();
+    useAuthStore.getState().init();
   }, []);
+
+  useEffect(() => {
+    if (initialized && !token) {
+      navigate('/auth/login');
+    }
+  }, [initialized, token, navigate]);
+
+  useEffect(() => {
+    if (activeTeamId) {
+      fetchTasks(activeTeamId);
+      fetchProjects(activeTeamId);
+      fetchMembers(activeTeamId);
+    }
+  }, [activeTeamId, fetchTasks, fetchProjects, fetchMembers]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -41,6 +66,14 @@ export function DashboardLayout() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openSearchModal, openCreateTaskModal]);
+
+  if (!initialized || !token) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

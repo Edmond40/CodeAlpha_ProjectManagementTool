@@ -4,6 +4,7 @@ import { Button } from './Button';
 import { ThemeToggleButton } from './ui/ThemeToggle';
 import { Dropdown } from './ui/Dropdown';
 import { useUIStore } from '../store/useUIStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 interface TopNavbarProps {
   onMobileMenuToggle: () => void;
@@ -11,7 +12,15 @@ interface TopNavbarProps {
 
 export function TopNavbar({ onMobileMenuToggle }: TopNavbarProps) {
   const { openSearchModal } = useUIStore();
+  const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/auth/login');
+  };
+
+  const userInitial = (user?.name || 'U')[0].toUpperCase();
 
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-x-4 border-b border-border bg-background/80 backdrop-blur-md px-4 sm:gap-x-6 sm:px-6 lg:px-8">
@@ -62,21 +71,19 @@ export function TopNavbar({ onMobileMenuToggle }: TopNavbarProps) {
                 type="button"
                 className="-m-1.5 flex items-center p-1.5 rounded-lg hover:bg-muted transition-colors"
               >
-                <img
-                  className="h-9 w-9 rounded-full bg-muted border object-cover"
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                  alt="User Avatar"
-                />
+                <span className="h-9 w-9 rounded-full bg-muted border flex items-center justify-center text-sm font-bold text-foreground shrink-0">
+                  {userInitial}
+                </span>
                 <span className="hidden lg:flex lg:items-center ml-3 text-sm font-semibold text-foreground">
-                  Alex Morgan
+                  {user?.name || 'User'}
                 </span>
               </button>
             }
             items={[
-              { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" />, onClick: () => navigate('/dashboard/settings') },
+              { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" />, onClick: () => navigate('/dashboard/settings/profile') },
               { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" />, onClick: () => navigate('/dashboard/settings') },
               { id: 'sep', label: '', separator: true },
-              { id: 'logout', label: 'Sign out', icon: <LogOut className="w-4 h-4" />, destructive: true, onClick: () => navigate('/auth/login') },
+              { id: 'logout', label: 'Sign out', icon: <LogOut className="w-4 h-4" />, destructive: true, onClick: handleLogout },
             ]}
           />
         </div>

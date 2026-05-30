@@ -7,6 +7,9 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, GitBranch, Globe } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { useAuthStore } from '../store/useAuthStore';
+import { useUIStore } from '../store/useUIStore';
+import { getErrorMessage } from '../utils/error';
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -20,16 +23,27 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { addToast } = useUIStore();
+  const { register: registerUser, teams } = useAuthStore();
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (_data: RegisterForm) => {
+  const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    navigate('/dashboard');
+    try {
+      await registerUser(data.fullName, data.email, data.password);
+      if (teams.length === 0) {
+        navigate('/dashboard/settings/new-team');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      addToast({ title: 'Registration failed', description: getErrorMessage(error), type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -7,6 +7,9 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, GitBranch, Globe } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { useAuthStore } from '../store/useAuthStore';
+import { useUIStore } from '../store/useUIStore';
+import { getErrorMessage } from '../utils/error';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -19,16 +22,27 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { addToast } = useUIStore();
+  const { login, teams } = useAuthStore();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (_data: LoginForm) => {
+  const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    navigate('/dashboard');
+    try {
+      await login(data.email, data.password);
+      if (teams.length === 0) {
+        navigate('/dashboard/settings/new-team');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      addToast({ title: 'Login failed', description: getErrorMessage(error), type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

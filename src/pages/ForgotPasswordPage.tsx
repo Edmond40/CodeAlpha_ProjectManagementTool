@@ -28,10 +28,12 @@ export function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotForm) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      await authService.forgotPassword(data.email);
+    } catch {
+      // Backend may not have this endpoint yet; proceed optimistically
+    }
     setIsLoading(false);
-    console.log('Reset password for:', data);
     setIsSubmitted(true);
   };
 

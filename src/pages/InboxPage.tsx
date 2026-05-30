@@ -1,27 +1,34 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, MailOpen, Star } from 'lucide-react';
 import { TabFilters } from '../components/ui/TabFilters';
 import { FilterPanel } from '../components/ui/FilterPanel';
 import { cn } from '../utils/cn';
-
-const mockInbox = [
-  { id: '1', from: 'Alice Chen', subject: 'Design review for Dashboard v2', preview: 'The new mockups are ready for feedback...', time: '5m ago', read: false, starred: true, type: 'mention' },
-  { id: '2', from: 'System', subject: 'Task assigned: Rate limiting middleware', preview: 'You have been assigned to a new task...', time: '1h ago', read: false, starred: false, type: 'assignment' },
-  { id: '3', from: 'Grace Huang', subject: 'Sprint 47 planning notes', preview: 'Here are the key items for tomorrow...', time: '3h ago', read: true, starred: false, type: 'update' },
-  { id: '4', from: 'Liam O\'Brien', subject: 'Q3 campaign assets', preview: 'Please review the attached creative...', time: '1d ago', read: true, starred: true, type: 'mention' },
-  { id: '5', from: 'Olivia Taylor', subject: 'Product roadmap alignment', preview: 'We need to sync on the priorities...', time: '2d ago', read: true, starred: false, type: 'update' },
-];
+import { notificationService } from '../services/notificationService';
+import type { Notification } from '../services/notificationService';
+import { useAuthStore } from '../store/useAuthStore';
 
 export function InboxPage() {
-  const [items, setItems] = useState(mockInbox);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'all' | 'unread' | 'starred'>('all');
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+
+  const { activeTeamId } = useAuthStore();
+  const teamId = activeTeamId || 'default';
+
+  useEffect(() => {
+    notificationService.getTeamNotifications(teamId)
+      .then(setItems)
+      .catch(() => {
+        setItems([]);
+      })
+      .finally(() => setLoading(false));
+  }, [teamId]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
       if (tab === 'unread' && item.read) return false;
-      if (tab === 'starred' && !item.starred) return false;
       if (typeFilter.length && !typeFilter.includes(item.type)) return false;
       return true;
     });
@@ -29,11 +36,19 @@ export function InboxPage() {
 
   const toggleRead = (id: string) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read: !i.read } : i)));
+    const item = items.find((i) => i.id === id);
+    if (item) {
+      notificationService.updateNotification(id, item.read ? 'UNREAD' : 'READ').catch(() => {});
+    }
   };
 
-  const toggleStar = (id: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, starred: !i.starred } : i)));
-  };
+  if (loading) {
+    return (
+      <div className="space-y-4 h-full flex flex-col items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading notifications...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 h-full flex flex-col">
@@ -49,7 +64,10 @@ export function InboxPage() {
               type: 'multi-select',
               options: [
                 { value: 'mention', label: 'Mentions' },
-                { value: 'assignment', label: 'Assignments' },
+                { value: 'assign', label: 'Assignments' },
+                { value: 'deadline', label: 'Deadlines' },
+                { value: 'invite', label: 'Invites' },
+                { value: 'comment', label: 'Comments' },
                 { value: 'update', label: 'Updates' },
               ],
               value: typeFilter,
@@ -65,7 +83,6 @@ export function InboxPage() {
         tabs={[
           { value: 'all', label: 'All' },
           { value: 'unread', label: 'Unread' },
-          { value: 'starred', label: 'Starred' },
         ]}
       />
 
@@ -88,21 +105,13 @@ export function InboxPage() {
                 >
                   {item.read ? <MailOpen className="w-4 h-4" /> : <Mail className="w-4 h-4 text-primary" />}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => toggleStar(item.id)}
-                  className="text-muted-foreground hover:text-amber-400"
-                >
-                  <Star className={cn('w-4 h-4', item.starred && 'fill-amber-400 text-amber-400')} />
-                </button>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-foreground">{item.from}</span>
+                  <span className="text-sm font-semibold text-foreground">{item.type}</span>
                   <span className="text-[11px] text-muted-foreground shrink-0">{item.time}</span>
                 </div>
-                <p className="text-sm text-foreground truncate">{item.subject}</p>
-                <p className="text-xs text-muted-foreground truncate">{item.preview}</p>
+                <p className="text-sm text-foreground truncate">{item.message}</p>
               </div>
             </motion.div>
           ))}

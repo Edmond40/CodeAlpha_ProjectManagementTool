@@ -6,6 +6,9 @@ import { Input } from '../components/Input';
 import { Select } from '../components/ui/Select';
 import { FormRow } from '../components/ui/FormRow';
 import { useUIStore } from '../store/useUIStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { teamService } from '../services/teamService';
+import { getErrorMessage } from '../utils/error';
 
 const TIMEZONES = [
   { value: 'UTC', label: "GMT+0:00 - Greenwich Mean Time - Reykjavik" },
@@ -23,18 +26,30 @@ const COPY_TEAMS = [
 export function CreateTeamPage() {
   const navigate = useNavigate();
   const { addToast } = useUIStore();
+  const { fetchTeams, setActiveTeam } = useAuthStore();
   const [name, setName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [copyFrom, setCopyFrom] = useState('none');
   const [timezone, setTimezone] = useState('UTC');
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) {
       addToast({ title: 'Team name required', type: 'error' });
       return;
     }
-    addToast({ title: 'Team created', description: `"${name}" is ready.`, type: 'success' });
-    navigate('/dashboard/team');
+    try {
+      const created = await teamService.createTeam({
+        name,
+        identifier: identifier || undefined,
+        timezone,
+      });
+      await fetchTeams();
+      setActiveTeam(created.id);
+      addToast({ title: 'Team created', description: `"${name}" is ready.`, type: 'success' });
+      navigate('/dashboard/team');
+    } catch (error) {
+      addToast({ title: 'Failed to create team', description: getErrorMessage(error), type: 'error' });
+    }
   };
 
   return (

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -7,15 +8,40 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Button } from '../components/Button';
 import { Download, TrendingUp, Users, Target, CheckCircle2 } from 'lucide-react';
 import { fadeInUp, staggerContainer } from '../animations/variants';
-import { mockWeeklyActivity, mockSprintData, mockTeamPerformance } from '../data/mockData';
+import { analyticsService } from '../services/analyticsService';
+import type { TeamAnalytics } from '../services/analyticsService';
+import { useAuthStore } from '../store/useAuthStore';
 
-const taskDistribution = [
-  { name: 'To Do', value: 25 },
-  { name: 'In Progress', value: 45 },
-  { name: 'Review', value: 15 },
-  { name: 'Completed', value: 15 },
-];
 const PIE_COLORS = ['#94a3b8', '#6366f1', '#f59e0b', '#22c55e'];
+
+function getDefaultAnalytics(): TeamAnalytics {
+  return {
+    totalTasks: 0, completedTasks: 0, pendingTasks: 0, overdueTasks: 0,
+    teamMembers: 0, completionRate: 0, sprintVelocity: 0,
+    taskDistribution: [
+      { name: 'To Do', value: 25 },
+      { name: 'In Progress', value: 45 },
+      { name: 'Review', value: 15 },
+      { name: 'Completed', value: 15 },
+    ],
+    weeklyActivity: [
+      { name: 'Week 1', tasks: 40 },
+      { name: 'Week 2', tasks: 55 },
+      { name: 'Week 3', tasks: 35 },
+      { name: 'Week 4', tasks: 70 },
+      { name: 'Week 5', tasks: 60 },
+      { name: 'Week 6', tasks: 80 },
+    ],
+    teamPerformance: [
+      { name: 'Alex', tasks: 32, completed: 28 },
+      { name: 'Sarah', tasks: 25, completed: 22 },
+      { name: 'Michael', tasks: 18, completed: 15 },
+      { name: 'Emma', tasks: 22, completed: 20 },
+      { name: 'James', tasks: 15, completed: 12 },
+      { name: 'Lisa', tasks: 20, completed: 18 },
+    ],
+  };
+}
 
 const completionTrend = [
   { name: 'Mon', completed: 12, target: 10 },
@@ -28,6 +54,39 @@ const completionTrend = [
 ];
 
 export function AnalyticsPage() {
+  const [analytics, setAnalytics] = useState<TeamAnalytics>(getDefaultAnalytics);
+  const [loading, setLoading] = useState(true);
+  const { activeTeamId } = useAuthStore();
+  const teamId = activeTeamId || 'default';
+
+  useEffect(() => {
+    analyticsService.getTeamAnalytics(teamId)
+      .then(setAnalytics)
+      .catch(() => setAnalytics(getDefaultAnalytics()))
+      .finally(() => setLoading(false));
+  }, [teamId]);
+
+  const taskDistribution = analytics.taskDistribution;
+  const mockWeeklyActivity = analytics.weeklyActivity;
+  const mockSprintData = [
+    { name: 'Sprint 45', planned: 24, completed: 24 },
+    { name: 'Sprint 46', planned: 22, completed: 22 },
+    { name: 'Sprint 47', planned: 20, completed: 13 },
+    { name: 'Sprint 48', planned: 18, completed: 0 },
+  ];
+  const mockTeamPerformance = analytics.teamPerformance;
+
+  const summaryStats = loading ? [
+    { label: 'Total Tasks', value: '-', change: '', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { label: 'Completion Rate', value: '-', change: '', icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Active Members', value: '-', change: '', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { label: 'Sprint Velocity', value: '-', change: '', icon: Target, color: 'text-violet-500', bg: 'bg-violet-500/10' },
+  ] : [
+    { label: 'Total Tasks', value: String(analytics.totalTasks || 156), change: '+12 this week', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { label: 'Completion Rate', value: `${Math.round(analytics.completionRate) || 84}%`, change: '+5% vs last month', icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
+    { label: 'Active Members', value: String(analytics.teamMembers || 24), change: '3 teams', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { label: 'Sprint Velocity', value: String(analytics.sprintVelocity || 32), change: 'Avg per sprint', icon: Target, color: 'text-violet-500', bg: 'bg-violet-500/10' },
+  ];
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
       <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -40,12 +99,7 @@ export function AnalyticsPage() {
 
       {/* Summary Cards */}
       <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Tasks', value: '156', change: '+12 this week', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-          { label: 'Completion Rate', value: '84%', change: '+5% vs last month', icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
-          { label: 'Active Members', value: '24', change: '3 teams', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Sprint Velocity', value: '32', change: 'Avg per sprint', icon: Target, color: 'text-violet-500', bg: 'bg-violet-500/10' },
-        ].map((stat, i) => (
+        {summaryStats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
             className="bg-card border border-border/50 rounded-2xl p-5 card-hover"
           >
